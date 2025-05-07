@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
+use crate::{github::Issue, inputs::InputProvider};
+use anyhow::Result;
 use colored::Colorize;
-use dialoguer::{Input, Select};
 
-use crate::github::Issue;
-
-pub fn select_issue<'a>(issues: &'a [Issue], prompt: &str) -> Result<&'a Issue> {
+pub fn select_issue<'a>(
+    issues: &'a [Issue],
+    prompt: &str,
+    input_provider: &dyn InputProvider,
+) -> Result<&'a Issue> {
     let selections: Vec<String> = issues
         .iter()
         .map(|issue| {
@@ -29,30 +31,9 @@ pub fn select_issue<'a>(issues: &'a [Issue], prompt: &str) -> Result<&'a Issue> 
     if selections.is_empty() {
         return Err(anyhow::anyhow!("No issues available to select"));
     }
-    let selection = Select::new()
-        .with_prompt(prompt)
-        .items(&selections)
-        .interact()
-        .with_context(|| "Failed to get user input")?;
+    let selection = input_provider.get_by_select(prompt, &selections)?;
 
     Ok(&issues[selection])
-}
-
-pub fn get_input(prompt: &str, default: Option<&str>) -> Result<String> {
-    if let Some(default_value) = default {
-        let input: String = Input::new()
-            .with_prompt(prompt)
-            .default(default_value.to_string())
-            .interact()
-            .with_context(|| "Failed to get user input")?;
-        Ok(input)
-    } else {
-        let input: String = Input::new()
-            .with_prompt(prompt)
-            .interact()
-            .with_context(|| "Failed to get user input")?;
-        Ok(input)
-    }
 }
 
 pub fn create_branch_name_from_issue(issue: &Issue) -> String {
@@ -67,4 +48,35 @@ pub fn create_pr_text(issue_number: u64, desc: &str) -> String {
     }
     text.push_str(&format!("closes #{}", issue_number));
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_create_short_name_for_a_branch() {
+        let issue = Issue {
+            number: 48,
+            title: "Test issue".to_string(),
+            url: "https://github.com/test/tester/issues/48".to_string(),
+            labels: vec![],
+        };
+        let branch_name = create_branch_name_from_issue(&issue);
+        assert_eq!(branch_name, "feature/48".to_string());
+    }
+    #[test]
+    fn should_create_pr_text_with_description() {
+        let issue_number = 42;
+        let description = "This is a test description".to_string();
+        let pr = create_pr_text(issue_number, &description);
+        assert_eq!(pr, "This is a test description\n\ncloses #42");
+    }
+    #[test]
+    fn test_create_pr_text_without_description() {
+        let issue_number = 42;
+        let description = "";
+        let pr_text = create_pr_text(issue_number, description);
+        assert_eq!(pr_text, "closes #42");
+    }
 }

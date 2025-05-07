@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod git;
 mod github;
+mod inputs;
 mod utils;
 
 use anyhow::Result;
@@ -10,7 +11,8 @@ use colored::Colorize;
 use config::Config;
 use git::GitRepo;
 use github::GitHubClient;
-use utils::{create_branch_name_from_issue, create_pr_text, get_input, select_issue};
+use inputs::{ConsoleInput, InputProvider};
+use utils::{create_branch_name_from_issue, create_pr_text, select_issue};
 const WORKING_LABEL: &str = "working-on";
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,17 +39,19 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Commands::Start => {
-            start_command().await?;
+            let input_provider = ConsoleInput;
+            start_command(&input_provider).await?;
             Ok(())
         }
         Commands::Finish { title, description } => {
-            finish_command(title, description).await?;
+            let input_provider = ConsoleInput;
+            finish_command(&input_provider, title, description).await?;
             Ok(())
         }
     }
 }
 
-async fn start_command() -> Result<()> {
+async fn start_command(input_provider: &dyn InputProvider) -> Result<()> {
     let config = Config::load()?;
     let token = config.github_token.ok_or_else(|| {
         anyhow::anyhow!("Github token not found. Please set it with config --token <TOKEN>")
@@ -58,7 +62,7 @@ async fn start_command() -> Result<()> {
     println!("Fetching issues from {} - {} ! ", owner, repo_name);
     let client = GitHubClient::new(&token, owner, repo_name)?;
     let issues = client.list_open_issues().await?;
-    let selected = select_issue(&issues, "Select an issue to work on")?;
+    let selected = select_issue(&issues, "Select an issue to work on", input_provider)?;
     println!("Starting task:#{} {}", selected.number, selected.title);
     client
         .add_label_to_issue(selected.number, WORKING_LABEL)
@@ -72,7 +76,11 @@ async fn start_command() -> Result<()> {
     Ok(())
 }
 
-async fn finish_command(title: Option<String>, desc: Option<String>) -> Result<()> {
+async fn finish_command(
+    input_provider: &dyn InputProvider,
+    title: Option<String>,
+    desc: Option<String>,
+) -> Result<()> {
     let config = Config::load()?;
     let token = config.github_token.ok_or_else(|| {
         anyhow::anyhow!("Github token not found!. Please set it up with 'config --token <TOKEN>'")
@@ -92,11 +100,11 @@ async fn finish_command(title: Option<String>, desc: Option<String>) -> Result<(
     let client = GitHubClient::new(&token, owner, repo_name)?;
     let title = match title {
         Some(t) => t,
-        None => get_input("Wprowadź tytuł dla PR", None)?,
+        None => input_provider.get_input("Wprowadź tytuł dla PR", None)?,
     };
     let description = match desc {
         Some(d) => d,
-        None => get_input("Wprowadź opis dla PR", None)?,
+        None => input_provider.get_input("Wprowadź opis dla PR", None)?,
     };
     let pr_body = create_pr_text(issue_number, &description);
     let pr_url = client
