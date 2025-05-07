@@ -69,7 +69,7 @@ jobs:
         shell: bash
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
           path: ${{ matrix.binary_path }}
@@ -145,7 +145,7 @@ jobs:
         shell: bash
 
       - name: Upload latest build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: git-task-cli-latest-${{ steps.build_date.outputs.DATE }}
           path: ./artifacts
