@@ -115,7 +115,7 @@ mod tests {
         let result1 = mock
             .get_by_select(
                 "Select one:",
-                &vec!["Option 1".to_string(), "Option 2".to_string()],
+                &["Option 1".to_string(), "Option 2".to_string()],
             )
             .unwrap();
         assert_eq!(result1, 1);
@@ -124,14 +124,14 @@ mod tests {
         let result2 = mock
             .get_by_select(
                 "Select another:",
-                &vec!["Option A".to_string(), "Option B".to_string()],
+                &["Option A".to_string(), "Option B".to_string()],
             )
             .unwrap();
         assert_eq!(result2, 0);
 
         // Test that trying to get more selections produces an error
         let result3 =
-            mock.get_by_select("Select a third:", &vec!["X".to_string(), "Y".to_string()]);
+            mock.get_by_select("Select a third:", &["X".to_string(), "Y".to_string()]);
         assert!(result3.is_err());
     }
 }

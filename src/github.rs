@@ -69,7 +69,7 @@ impl GitHubClient {
             .add_labels(issue_number, &[label.to_string()])
             .await
             .with_context(
-                || format!("Failed to add label {} to issue #{}", label, issue_number,),
+                || format!("Failed to add label {label} to issue #{issue_number}",),
             )?;
         Ok(())
     }
@@ -80,8 +80,7 @@ impl GitHubClient {
             .await
             .with_context(|| {
                 format!(
-                    "Failed to remove lael {} from issue #{}",
-                    label, issue_number
+                    "Failed to remove lael {label} from issue #{issue_number}"
                 )
             })?;
         Ok(())

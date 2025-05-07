@@ -46,18 +46,18 @@ impl GitRepo {
             .with_context(|| "Failed to get HEAD commit")?;
         self.repo
             .branch(name, &commit, false)
-            .with_context(|| format!("Failed to create branch: {}", name))?;
+            .with_context(|| format!("Failed to create branch: {name}"))?;
         let obj = self
             .repo
-            .revparse_single(&format!("refs/heads/{}", name))
-            .with_context(|| format!("Failed to get reference to the new branch: {}", name))?;
+            .revparse_single(&format!("refs/heads/{name}"))
+            .with_context(|| format!("Failed to get reference to the new branch: {name}"))?;
 
         self.repo
             .checkout_tree(&obj, None)
-            .with_context(|| format!("Failed to checkout tree for branch: {}", name))?;
+            .with_context(|| format!("Failed to checkout tree for branch: {name}"))?;
         self.repo
-            .set_head(&format!("refs/heads/{}", name))
-            .with_context(|| format!("Failed to set HEAD to new branch: {}", name))?;
+            .set_head(&format!("refs/heads/{name}"))
+            .with_context(|| format!("Failed to set HEAD to new branch: {name}"))?;
         Ok(())
     }
 }
@@ -77,7 +77,7 @@ fn normalize_github_url(url: &str) -> String {
 
 fn parse_github_owner_and_repo(url: &str) -> Result<(String, String)> {
     // Handle HTTPS URLs like https://github.com/owner/repo
-    println!("Parsing the url from your repo: {}", url);
+    println!("Parsing the url from your repo: {url}");
     if url.starts_with("https://github.com/") {
         let path = url.trim_start_matches("https://github.com/");
         let parts: Vec<&str> = path.split('/').collect();

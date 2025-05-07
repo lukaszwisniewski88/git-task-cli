@@ -46,7 +46,7 @@ pub fn create_pr_text(issue_number: u64, desc: &str) -> String {
         text.push_str(desc);
         text.push_str("\n\n");
     }
-    text.push_str(&format!("closes #{}", issue_number));
+    text.push_str(&format!("closes #{issue_number}"));
     text
 }
 

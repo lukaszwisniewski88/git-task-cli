@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let args = parse_args();
     match args.command {
         Commands::Config { token } => {
-            println!("Configuring with token: {:?}", token);
+            println!("Configuring with token: {token:?}");
             let mut config = Config::load()?;
             if let Some(token) = token {
                 config.set_github_token(token)?;
@@ -57,7 +57,7 @@ async fn start_command(input_provider: &dyn InputProvider) -> Result<()> {
     let repo = GitRepo::open()?;
     let (owner, repo_name) = repo.get_repo_owner_and_name()?;
 
-    println!("Fetching issues from {} - {} ! ", owner, repo_name);
+    println!("Fetching issues from {owner} - {repo_name} ! ");
     let client = GitHubClient::new(&token, owner, repo_name)?;
     let issues = client.list_open_issues().await?;
     let selected = select_issue(&issues, "Select an issue to work on", input_provider)?;
@@ -67,7 +67,7 @@ async fn start_command(input_provider: &dyn InputProvider) -> Result<()> {
         .await?;
     let branch_name = create_branch_name_from_issue(selected);
     repo.create_branch(&branch_name)?;
-    println!("Created and switched to branch {}", branch_name);
+    println!("Created and switched to branch {branch_name}");
 
     println!("\nYou're all set! Make your changes and when you're ready to create a PR, run:");
     println!("  git-issue-flow finish");
@@ -124,7 +124,7 @@ async fn list_command() -> Result<()> {
     })?;
     let repo = GitRepo::open()?;
     let (owner, repo_name) = repo.get_repo_owner_and_name()?;
-    println!("Fetching issues from {} - {} ", owner, repo_name);
+    println!("Fetching issues from {owner} - {repo_name} ");
     let client = GitHubClient::new(&token, owner.clone(), repo_name.clone())?;
     let issues = client.list_open_issues().await?;
     if issues.is_empty() {
