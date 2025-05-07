@@ -30,10 +30,8 @@ impl Config {
     }
     pub fn save(&self) -> Result<()> {
         let config_path = get_config_path()?;
-        if let Some(parent) = config_path.parent()
-            && !parent.exists()
-        {
-            fs::create_dir(parent)
+        if let Some(parent) = config_path.parent() {
+            fs::create_dir_all(parent)
                 .with_context(|| format!("Failed to create a config directory: {:?}", parent))?;
         }
         let config_str = serde_json::to_string_pretty(self)
