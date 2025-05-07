@@ -52,6 +52,8 @@ pub fn create_pr_text(issue_number: u64, desc: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::{github::Label, inputs::MockInput};
+
     use super::*;
 
     #[test]
@@ -78,5 +80,62 @@ mod tests {
         let description = "";
         let pr_text = create_pr_text(issue_number, description);
         assert_eq!(pr_text, "closes #42");
+    }
+    #[test]
+    fn test_select_issue() {
+        // Create mock issues
+        let issues = vec![
+            Issue {
+                number: 1,
+                title: "First issue".to_string(),
+                url: "https://github.com/test/repo/issues/1".to_string(),
+                labels: vec![],
+            },
+            Issue {
+                number: 2,
+                title: "Second issue".to_string(),
+                url: "https://github.com/test/repo/issues/2".to_string(),
+                labels: vec![Label {
+                    name: "bug".to_string(),
+                    color: "red".to_string(),
+                }],
+            },
+            Issue {
+                number: 3,
+                title: "Third issue".to_string(),
+                url: "https://github.com/test/repo/issues/3".to_string(),
+                labels: vec![Label {
+                    name: "feature".to_string(),
+                    color: "green".to_string(),
+                }],
+            },
+        ];
+
+        // Create a mock input provider that will select the second issue (index 1)
+        let mock_input = MockInput::new(vec![], vec![1]);
+
+        // Call select_issue with the mock
+        let result = select_issue(&issues, "Select an issue:", &mock_input).unwrap();
+
+        // Verify we got the second issue
+        assert_eq!(result.number, 2);
+        assert_eq!(result.title, "Second issue");
+        assert_eq!(result.labels.len(), 1);
+        assert_eq!(result.labels[0].name, "bug");
+    }
+
+    #[test]
+    fn test_select_issue_with_empty_list() {
+        // Test with an empty list of issues
+        let issues: Vec<Issue> = vec![];
+
+        // Create a mock input provider
+        let mock_input = MockInput::new(vec![], vec![0]);
+
+        // Call select_issue with the mock
+        let result = select_issue(&issues, "Select an issue:", &mock_input);
+
+        // Verify we got an error
+        assert!(result.is_err());
     }
 }

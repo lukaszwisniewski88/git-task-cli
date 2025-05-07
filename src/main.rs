@@ -24,12 +24,10 @@ async fn main() -> Result<()> {
             if let Some(token) = token {
                 config.set_github_token(token)?;
                 println!("Github token saved successfully!");
+            } else if let Some(token) = &config.github_token {
+                println!("Github token already set: {}****", &token[0..4]);
             } else {
-                if let Some(token) = &config.github_token {
-                    println!("Github token already set: {}****", &token[0..4]);
-                } else {
-                    println!("Github token not set");
-                }
+                println!("Github token not set");
             }
             Ok(())
         }
