@@ -1,0 +1,152 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: git-task-cli
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_path: target/release/git-task-cli
+            asset_name: git-task-cli-linux-amd64
+          - platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_path: target/release/git-task-cli.exe
+            asset_name: git-task-cli-windows-amd64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      # Install dependencies for Linux build
+      - name: Install Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev libgit2-dev pkg-config
+
+      # Install dependencies for Windows build
+      - name: Install Windows dependencies
+        if: matrix.platform == 'windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          install: mingw-w64-x86_64-libgit2
+
+      # Rust caching
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release
+
+      - name: List build directory
+        run: |
+          ls -la target/release/
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.binary_path }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract tag name
+        id: get_tag
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+        shell: bash
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          cp ./artifacts/git-task-cli-linux-amd64/git-task-cli ./release-assets/git-task-cli-linux-amd64
+          cp ./artifacts/git-task-cli-windows-amd64.exe/git-task-cli.exe ./release-assets/git-task-cli-windows-amd64.exe
+          chmod +x ./release-assets/git-task-cli-linux-amd64
+
+          # Create zip archives
+          cd release-assets
+          zip git-task-cli-linux-amd64.zip git-task-cli-linux-amd64
+          zip git-task-cli-windows-amd64.zip git-task-cli-windows-amd64.exe
+        shell: bash
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.get_tag.outputs.TAG }}
+          files: |
+            release-assets/git-task-cli-linux-amd64
+            release-assets/git-task-cli-windows-amd64.exe
+            release-assets/git-task-cli-linux-amd64.zip
+            release-assets/git-task-cli-windows-amd64.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+  # This job is run for every push to main to publish the latest build artifacts
+  publish-artifacts:
+    name: Publish Latest Artifacts
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: ./artifacts
+
+      - name: Display artifacts
+        run: ls -R ./artifacts
+        shell: bash
+
+      - name: Create build date variable
+        id: build_date
+        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Upload latest build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: git-task-cli-latest-${{ steps.build_date.outputs.DATE }}
+          path: ./artifacts
+          retention-days: 7
